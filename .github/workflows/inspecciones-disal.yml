@@ -39,6 +39,8 @@ jobs:
         run: python3 InspeccionesDISAL/ux_v02.py
       - name: Aplicar mejoras v0.3 REAS BCN y seguimiento
         run: python3 InspeccionesDISAL/ux_v03.py
+      - name: Aplicar estilo HUD cyberpunk v0.4
+        run: python3 InspeccionesDISAL/ux_v04.py
       - name: Compilar APK de inspecciones
         working-directory: InspeccionesDISAL
         run: gradle :app:assembleDebug --no-daemon --stacktrace
