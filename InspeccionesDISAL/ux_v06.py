@@ -167,7 +167,9 @@ s=replace_once(s,
     var message''',
     '''    val visits=month?.let{Metrics.compute(inspections,findings,it)}
     val complementary=otherVisits.filter{row->
-        month!=null && java.time.YearMonth.from(
+        month!=null && row.center.isNotBlank() && row.title.isNotBlank() &&
+            (row.summary.isNotBlank() || row.purpose.isNotBlank()) &&
+            java.time.YearMonth.from(
             java.time.Instant.ofEpochMilli(row.visitedAt)
                 .atZone(java.time.ZoneId.systemDefault()).toLocalDate())==month
     }
