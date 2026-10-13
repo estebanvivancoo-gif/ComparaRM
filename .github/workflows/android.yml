@@ -5,6 +5,7 @@ on:
     paths:
       - 'ComparaRM_v0.1_Android.zip'
       - '.github/workflows/android.yml'
+      - 'patches/**'
   workflow_dispatch:
 permissions:
   contents: read
@@ -21,6 +22,8 @@ jobs:
           test -f ComparaRM_v0.1_Android.zip || { echo "::error::Falta ComparaRM_v0.1_Android.zip en la raiz del repositorio"; exit 1; }
           unzip -q ComparaRM_v0.1_Android.zip
           test -f ComparaRM_v0.1/app/build.gradle
+      - name: Incorporar buscadores web a ComparaRM 0.2
+        run: python3 patches/apply_v02.py
       - name: Corregir atributo de interfaz incompatible
         run: |
           sed -i 's/android:allCaps=/android:textAllCaps=/g' ComparaRM_v0.1/app/src/main/res/layout/activity_main.xml
@@ -51,6 +54,6 @@ jobs:
       - name: Publicar APK descargable
         uses: actions/upload-artifact@v4
         with:
-          name: ComparaRM-APK-Android
+          name: ComparaRM-APK-Android-v02
           path: ComparaRM_v0.1/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
