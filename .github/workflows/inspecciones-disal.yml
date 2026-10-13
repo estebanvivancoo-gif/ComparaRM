@@ -37,6 +37,8 @@ jobs:
           gradle-version: '8.11.1'
       - name: Aplicar interfaz de terreno v0.2
         run: python3 InspeccionesDISAL/ux_v02.py
+      - name: Aplicar mejoras v0.3 REAS BCN y seguimiento
+        run: python3 InspeccionesDISAL/ux_v03.py
       - name: Compilar APK de inspecciones
         working-directory: InspeccionesDISAL
         run: gradle :app:assembleDebug --no-daemon --stacktrace
