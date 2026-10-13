@@ -110,6 +110,9 @@ fun AdditionalVisitForm(
     fun saveDraft(andLeave:Boolean=false){
         if(center.isBlank()) {message="Indica el establecimiento o lugar de la visita.";return}
         if(title.isBlank()) {message="Indica el motivo o asunto de la visita.";return}
+        if(summary.isBlank()&&purpose.isBlank()) {
+            message="Indica el objetivo o una breve descripción de lo realizado.";return
+        }
         if(due.isNotBlank() && runCatching{LocalDate.parse(due)}.isFailure) {
             message="La fecha de compromiso debe tener el formato AAAA-MM-DD.";return
         }
@@ -263,8 +266,8 @@ fun AdditionalVisitForm(
                 Text("Acta técnica formal con datos, descripción y acuerdos. La fotografía solo aparece si se adjuntó.",
                     color=muted,style=MaterialTheme.typography.bodySmall)
                 Button(onClick={
-                    if(center.isBlank()||title.isBlank()) {
-                        message="Completa lugar y asunto antes de generar el informe."
+                    if(center.isBlank()||title.isBlank()||(summary.isBlank()&&purpose.isBlank())) {
+                        message="Completa lugar, asunto y una descripción breve antes de generar el informe."
                     }else scope.launch{
                         try{
                             dao.saveAdditionalVisit(draft())
