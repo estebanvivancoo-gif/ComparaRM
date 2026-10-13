@@ -21,6 +21,9 @@ jobs:
           test -f ComparaRM_v0.1_Android.zip || { echo "::error::Falta ComparaRM_v0.1_Android.zip en la raiz del repositorio"; exit 1; }
           unzip -q ComparaRM_v0.1_Android.zip
           test -f ComparaRM_v0.1/app/build.gradle
+      - name: Corregir atributo de interfaz incompatible
+        run: |
+          sed -i 's/android:allCaps=/android:textAllCaps=/g' ComparaRM_v0.1/app/src/main/res/layout/activity_main.xml
       - name: Configurar Java 17
         uses: actions/setup-java@v4
         with:
