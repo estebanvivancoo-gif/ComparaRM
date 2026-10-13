@@ -1,0 +1,29 @@
+name: Diagnostico de precios web
+on:
+  workflow_dispatch:
+  push:
+    paths: ['.github/workflows/verificar-precios.yml']
+jobs:
+  prueba:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verificar buscadores de Jumbo y Santa Isabel
+        run: |
+          python3 - <<'PY'
+          import urllib.request,urllib.parse,json,uuid
+          for store,host,key in [
+              ('Jumbo','pwcdauseo-zone.cnstrc.com','key_JopvNXKS61kwGkBe'),
+              ('Santa Isabel','ac.cnstrc.com','key_c73M3GMIWJ8AcNnd')]:
+              q=urllib.parse.urlencode({'key':key,'i':str(uuid.uuid4()),'s':'1','num_results_per_page':'3'})
+              url='https://'+host+'/search/leche?'+q
+              try:
+                  request=urllib.request.Request(url,headers={'User-Agent':'Mozilla/5.0','Accept':'application/json'})
+                  with urllib.request.urlopen(request,timeout=12) as response:
+                      doc=json.load(response)
+                  rows=doc.get('response',{}).get('results',[])
+                  print(store, 'resultados=',len(rows),'muestra=', [(r.get('value'),r.get('data',{}).get('sellingPrice')) for r in rows[:2]])
+                  if not rows:
+                      print('ADVERTENCIA: Sin resultados; no significa que todos los precios estén disponibles')
+              except Exception as e:
+                  print('ERROR',store,type(e).__name__,str(e))
+          PY
