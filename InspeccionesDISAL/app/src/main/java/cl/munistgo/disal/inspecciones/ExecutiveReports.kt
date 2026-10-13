@@ -244,6 +244,7 @@ object ExecutiveReports {
             photoFrame(item.photoPath,LEFT,y,188f,140f)
             val x=LEFT+199f
             val w=RIGHT-x-2f
+            var miniIndex=0
             fun mini(label:String,value:String,limit:Int){
                 val maxRows=wrap(value,w-2f,textPaint(9.3f,INK))
                 c.drawText(label,x,y+12f+miniIndex*30f,textPaint(8.1f,BLUE,true))
@@ -253,7 +254,6 @@ object ExecutiveReports {
                 }
                 miniIndex+=if(maxRows.size>1 && limit>1)2 else 1
             }
-            var miniIndex=0
             mini("UBICACIÓN",item.location.ifBlank{"No indicada"},1)
             mini("RIESGO Y ESTADO",item.risk+" / "+item.status,1)
             mini("RESPONSABLE",item.implementationOwner.ifBlank{"Por asignar"},1)
