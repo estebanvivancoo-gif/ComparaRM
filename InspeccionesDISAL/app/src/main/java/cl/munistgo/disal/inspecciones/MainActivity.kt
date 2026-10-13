@@ -39,9 +39,12 @@ class MainActivity:ComponentActivity() {
         setContent { DisalApp() }
     }
 }
-private val teal=Color(0xFF126C70)
-private val navy=Color(0xFF163743)
-private val gray=Color(0xFF647580)
+private val teal=Color(0xFF0D568A)
+private val navy=Color(0xFF123C60)
+private val gray=Color(0xFF687681)
+private val riskLow=Color(0xFF237A4E)
+private val riskMedium=Color(0xFFD39B1B)
+private val riskCritical=Color(0xFFC83A3A)
 private val dateFormat=DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
 
 private fun date(millis:Long):String =
@@ -75,7 +78,7 @@ fun DisalApp() {
     var selectedId by remember {mutableStateOf<String?>(null)}
     var selectedFinding by remember {mutableStateOf<String?>(null)}
 
-    MaterialTheme(colorScheme=lightColorScheme(primary=teal,secondary=navy,background=Color(0xFFF0F5F6))) {
+    MaterialTheme(colorScheme=lightColorScheme(primary=teal,secondary=navy,background=Color(0xFFF8F9FA))) {
         Column(Modifier.fillMaxSize()) {
             Surface(color=navy) {
                 Column(Modifier.fillMaxWidth().padding(16.dp)) {
@@ -121,15 +124,28 @@ fun DisalApp() {
 }
 
 @Composable
+private fun DashboardStat(title:String,value:String,color:Color,modifier:Modifier=Modifier) {
+    Card(modifier,shape=RoundedCornerShape(14.dp),colors=CardDefaults.cardColors(containerColor=Color.White)) {
+        Column(Modifier.padding(12.dp)) {
+            Text(value,fontWeight=FontWeight.Bold,color=color,style=MaterialTheme.typography.headlineSmall)
+            Text(title,color=gray,style=MaterialTheme.typography.labelSmall)
+        }
+    }
+}
+
+@Composable
 private fun HistoryScreen(inspections:List<InspectionEntity>,findings:List<FindingEntity>,
     onOpen:(String)->Unit,onNew:()->Unit) {
     var centerFilter by remember {mutableStateOf("")}
     var monthFilter by remember {mutableStateOf("")}
     var statusFilter by remember {mutableStateOf("Todos")}
+    val monthly=Metrics.compute(inspections,findings,YearMonth.now())
+    val pendingCount=findings.count {it.status!="CERRADO"}
+    val overdueCount=findings.count(Metrics::overdue)
     val filtered=inspections.filter { inspection ->
         val rows=findings.filter {it.inspectionId==inspection.id}
         val pending=rows.any {it.status!="CERRADO"}
-        val overdue=rows.any{Metrics.overdue(it)}
+        val overdue=rows.any {Metrics.overdue(it)}
         val closed=rows.isNotEmpty()&&rows.all {it.status=="CERRADO"}
         inspection.center.contains(centerFilter,ignoreCase=true) &&
             (monthFilter.isBlank() ||
@@ -137,29 +153,75 @@ private fun HistoryScreen(inspections:List<InspectionEntity>,findings:List<Findi
             (statusFilter=="Todos" || (statusFilter=="Pendientes"&&pending) ||
                 (statusFilter=="Vencidos"&&overdue) || (statusFilter=="Cerrados"&&closed))
     }
-    Column(Modifier.fillMaxSize().padding(horizontal=14.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
-        Button(onClick=onNew,modifier=Modifier.fillMaxWidth()){Text("+ Nueva inspección")}
-        LabelField("Filtrar por centro",centerFilter,{centerFilter=it})
-        LabelField("Fecha de visita (AAAA-MM)",monthFilter,{monthFilter=it})
-        Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-            listOf("Todos","Pendientes","Vencidos","Cerrados").forEach { option->
-                FilterChip(selected=statusFilter==option,onClick={statusFilter=option},label={Text(option)})
-            }
+    Scaffold(
+        containerColor=Color(0xFFF8F9FA),
+        floatingActionButton={
+            ExtendedFloatingActionButton(onClick=onNew,containerColor=teal,contentColor=Color.White,
+                text={Text("Nueva inspección")},icon={Text("+",style=MaterialTheme.typography.titleLarge)})
         }
-        Text("Historial local · "+filtered.size+" inspecciones",fontWeight=FontWeight.Bold)
-        LazyColumn(verticalArrangement=Arrangement.spacedBy(8.dp),contentPadding=PaddingValues(bottom=24.dp)) {
-            items(filtered,key={it.id}){ ins ->
-                val rows=findings.filter {it.inspectionId==ins.id}
-                val bad=rows.count(Metrics::overdue)
-                Card(Modifier.fillMaxWidth().clickable {onOpen(ins.id)},
-                    colors=CardDefaults.cardColors(containerColor=Color.White)) {
-                    Column(Modifier.padding(14.dp)) {
-                        Text(ins.center.ifBlank {"Centro sin registrar"},fontWeight=FontWeight.Bold,color=navy)
-                        Text(ins.title)
-                        Text(date(ins.visitedAt),color=gray)
-                        Text("Hallazgos: "+rows.size+" · Vencidos: "+bad+" · Pendientes: "+rows.count {it.status!="CERRADO"},color=teal)
+    ) { insets ->
+        LazyColumn(Modifier.fillMaxSize().padding(insets).padding(horizontal=14.dp),
+            verticalArrangement=Arrangement.spacedBy(10.dp),
+            contentPadding=PaddingValues(top=10.dp,bottom=94.dp)) {
+            item {
+                Text("Panel de visitas en terreno",fontWeight=FontWeight.Bold,color=navy,
+                    style=MaterialTheme.typography.titleLarge)
+                Text("Indicadores del mes actual: "+YearMonth.now(),color=gray)
+            }
+            item {
+                Row(horizontalArrangement=Arrangement.spacedBy(8.dp),modifier=Modifier.fillMaxWidth()){
+                    DashboardStat("Inspecciones",monthly.inspections.toString(),teal,Modifier.weight(1f))
+                    DashboardStat("Cumplimiento",monthly.compliance?.let {String.format("%.0f%%",it)}?:"N/D",
+                        teal,Modifier.weight(1f))
+                }
+            }
+            item {
+                Row(horizontalArrangement=Arrangement.spacedBy(8.dp),modifier=Modifier.fillMaxWidth()){
+                    DashboardStat("Pendientes",pendingCount.toString(),Color(0xFFAD760D),Modifier.weight(1f))
+                    DashboardStat("Vencidos",overdueCount.toString(),Color(0xFFBF3030),Modifier.weight(1f))
+                }
+            }
+            item {
+                Card(colors=CardDefaults.cardColors(containerColor=Color.White)) {
+                    Column(Modifier.padding(12.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){
+                        Text("Filtrar historial",fontWeight=FontWeight.Bold,color=navy)
+                        LabelField("Centro o establecimiento",centerFilter,{centerFilter=it})
+                        LabelField("Mes de visita (AAAA-MM)",monthFilter,{monthFilter=it})
+                        Row(Modifier.horizontalScroll(rememberScrollState()),
+                            horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+                            listOf("Todos","Pendientes","Vencidos","Cerrados").forEach { option ->
+                                FilterChip(selected=statusFilter==option,onClick={statusFilter=option},label={Text(option)})
+                            }
+                        }
                     }
                 }
+            }
+            item { Text("Historial · "+filtered.size+" inspecciones",fontWeight=FontWeight.Bold,color=navy) }
+            items(filtered,key={it.id}) { inspection ->
+                val rows=findings.filter {it.inspectionId==inspection.id}
+                val bad=rows.count(Metrics::overdue)
+                val critical=rows.count {it.risk=="CRITICO"}
+                Card(
+                    modifier=Modifier.fillMaxWidth().clickable {onOpen(inspection.id)},
+                    colors=CardDefaults.cardColors(containerColor=Color.White),
+                    shape=RoundedCornerShape(14.dp)
+                ) {
+                    Column(Modifier.padding(14.dp),verticalArrangement=Arrangement.spacedBy(5.dp)) {
+                        Text(inspection.center.ifBlank{"Centro por registrar"},fontWeight=FontWeight.Bold,color=navy)
+                        Text(inspection.title,style=MaterialTheme.typography.bodyMedium)
+                        Text(date(inspection.visitedAt),color=gray,style=MaterialTheme.typography.bodySmall)
+                        Row(horizontalArrangement=Arrangement.spacedBy(12.dp)) {
+                            Text("Hallazgos: "+rows.size,color=teal)
+                            Text("Vencidos: "+bad,color=Color(0xFFBF3030))
+                            if(critical>0) Text("Críticos: "+critical,color=Color(0xFFBF3030))
+                        }
+                        Text("Abrir inspección →",color=teal,style=MaterialTheme.typography.labelMedium)
+                    }
+                }
+            }
+            if(filtered.isEmpty()) item {
+                Text("No hay inspecciones para los filtros seleccionados. Usa el botón + para comenzar.",
+                    color=gray,modifier=Modifier.padding(12.dp))
             }
         }
     }
@@ -183,11 +245,21 @@ private fun DetailScreen(inspection:InspectionEntity,findings:List<FindingEntity
     var participants by remember(inspection.id){mutableStateOf(emptyList<ParticipantEntity>())}
     LaunchedEffect(inspection.id,refresh) {participants=dao.participants(inspection.id)}
     var message by remember {mutableStateOf("")}
+    var step by remember(inspection.id){mutableIntStateOf(0)}
     val current=inspection.copy(title=title,center=center,area=area,inspector=inspector,inspectorRole=role,conclusions=conclusions)
 
     fun save() {scope.launch {dao.saveInspection(current);message="Datos guardados localmente."}}
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp),
         verticalArrangement=Arrangement.spacedBy(12.dp)) {
+        Text("Formulario de terreno · Paso ${step+1} de 3",
+            color=navy,fontWeight=FontWeight.Bold)
+        LinearProgressIndicator(progress={(step+1)/3f},modifier=Modifier.fillMaxWidth(),color=teal)
+        Row(horizontalArrangement=Arrangement.spacedBy(6.dp),modifier=Modifier.horizontalScroll(rememberScrollState())) {
+            listOf("1. Datos","2. Hallazgos","3. Validación").forEachIndexed { index,label ->
+                FilterChip(selected=step==index,onClick={step=index},label={Text(label)})
+            }
+        }
+        if(step==0) {
         Section("A. Datos generales") {
             Text("Visita: "+date(inspection.visitedAt),color=gray)
             LabelField("Título / tipo de inspección",title,{title=it})
@@ -212,6 +284,8 @@ private fun DetailScreen(inspection:InspectionEntity,findings:List<FindingEntity
                 }
             }){Text("Añadir participante")}
         }
+        }
+        if(step==1) {
         Section("B. Hallazgos · "+findings.size) {
             Button(onClick={save();onFinding(null)},modifier=Modifier.fillMaxWidth()){Text("+ Agregar hallazgo y fotografía")}
             for((index,found) in findings.withIndex()) {
@@ -222,6 +296,8 @@ private fun DetailScreen(inspection:InspectionEntity,findings:List<FindingEntity
                 TextButton(onClick={save();onFinding(found.id)}) {Text("Revisar, cerrar o reabrir")}
             }
         }
+        }
+        if(step==2) {
         Section("C. Conclusiones y firmas") {
             LabelField("Conclusiones del inspector",conclusions,{conclusions=it},multiline=true)
             Button(onClick={save();onSign()},modifier=Modifier.fillMaxWidth()){Text("Capturar firmas en pantalla")}
@@ -242,6 +318,11 @@ private fun DetailScreen(inspection:InspectionEntity,findings:List<FindingEntity
                     }catch(e:Exception){message="No se pudo generar PDF: "+e.message}
                 }
             },modifier=Modifier.fillMaxWidth()){Text("Generar PDF y enviar / compartir")}
+        }
+        }
+        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {
+            OutlinedButton(onClick={if(step>0)step-- else onBack()}){Text(if(step==0)"Volver" else "Anterior")}
+            if(step<2)Button(onClick={save();step++}){Text("Guardar y continuar →")}
         }
         if(message.isNotBlank())Text(message,color=teal)
         OutlinedButton(onClick=onBack,modifier=Modifier.fillMaxWidth()){Text("Volver al historial")}
@@ -290,7 +371,14 @@ private fun FindingScreen(inspectionId:String,existing:FindingEntity?,dao:Inspec
             Text("Evaluación del riesgo",fontWeight=FontWeight.Bold)
             Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(7.dp)){
                 listOf("LEVE","MODERADO","CRITICO").forEach {value->
-                    FilterChip(selected=risk==value,onClick={risk=value},label={Text(value)})
+                    FilterChip(
+                        selected=risk==value,onClick={risk=value},label={Text(value)},
+                        colors=FilterChipDefaults.filterChipColors(
+                            selectedContainerColor=when(value) {
+                                "LEVE"->riskLow; "MODERADO"->riskMedium; else->riskCritical
+                            }, selectedLabelColor=if(value=="MODERADO")Color.Black else Color.White
+                        )
+                    )
                 }
             }
             LabelField("Normativa legal aplicable (citar artículo)",regulation,{regulation=it})
@@ -301,7 +389,9 @@ private fun FindingScreen(inspectionId:String,existing:FindingEntity?,dao:Inspec
             Text("Estado de avance",fontWeight=FontWeight.Bold)
             Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
                 listOf("PENDIENTE","PROCESO","CERRADO").forEach {value->
-                    FilterChip(selected=status==value,onClick={status=value},label={Text(value)})
+                    FilterChip(selected=status==value,onClick={status=value},label={Text(value)},
+                        colors=FilterChipDefaults.filterChipColors(selectedContainerColor=teal,
+                            selectedLabelColor=Color.White))
                 }
             }
             if(existing!=null) {
@@ -393,7 +483,11 @@ private fun MonthlyScreen(inspections:List<InspectionEntity>,findings:List<Findi
             }else {
                 Text("Inspecciones realizadas: "+stats.inspections)
                 Text("Hallazgos detectados: "+stats.findings)
-                Text("Leves / moderados / críticos: "+stats.mild+" / "+stats.moderate+" / "+stats.critical)
+                Row(horizontalArrangement=Arrangement.spacedBy(8.dp),modifier=Modifier.fillMaxWidth()) {
+                    DashboardStat("Leves",stats.mild.toString(),riskLow,Modifier.weight(1f))
+                    DashboardStat("Moderados",stats.moderate.toString(),riskMedium,Modifier.weight(1f))
+                    DashboardStat("Críticos",stats.critical.toString(),riskCritical,Modifier.weight(1f))
+                }
                 HorizontalDivider()
                 Text("Cerrados dentro del plazo: "+stats.onTime)
                 Text("Vencidos (abiertos o cerrados fuera de plazo): "+stats.overdue)
