@@ -26,16 +26,22 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: Utilizar Android SDK incluido en el runner
+      - name: Activar Android SDK preinstalado
+        shell: bash
         run: |
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          command -v sdkmanager
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -path '*/bin/sdkmanager' | head -n 1)"
+          test -n "$SDKMANAGER" || { echo "::error::No se encontró sdkmanager"; exit 1; }
+          echo "$(dirname "$SDKMANAGER")" >> "$GITHUB_PATH"
+          echo "SDKMANAGER=$SDKMANAGER" >> "$GITHUB_ENV"
+          echo "SDK disponible: $SDKMANAGER"
       - name: Configurar Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.11.1'
       - name: Instalar Android API 35
-        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+        run: |
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" 'platforms;android-35' 'build-tools;35.0.0'
       - name: Compilar y firmar APK de prueba
         working-directory: ComparaRM_v0.1
         run: gradle :app:assembleDebug --no-daemon --stacktrace
