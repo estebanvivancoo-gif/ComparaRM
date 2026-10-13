@@ -37,7 +37,7 @@ methods=r'''
             liveStatus.setText("Escribe o escanea un producto para consultar los buscadores web.");
             return;
         }
-        liveStatus.setText("Consultando Jumbo y Santa Isabel…");
+        liveStatus.setText("Consultando 5 catálogos web de supermercados…");
         new Thread(() -> {
             OnlinePrices.Result result=OnlinePrices.query(q);
             runOnUiThread(() -> {
@@ -95,19 +95,23 @@ methods=r'''
             TextView issues=label("Avisos: "+android.text.TextUtils.join(" · ",result.problems),11,false,0xFF975320);
             issues.setPadding(0,px(8),0,px(4));liveResults.addView(issues);
         }
-        TextView fallback=label("Otras cadenas: búsqueda externa (sin precio integrado)",12,true,0xFF425B66);
+        TextView fallback=label("Acceso a las 7 cadenas · enlaces cuando falle la consulta automática",12,true,0xFF425B66);
         fallback.setPadding(0,px(16),0,px(4));liveResults.addView(fallback);
         String[][] stores={
-            {"Líder","https://super.lider.cl/search?q="},
+            {"Líder","https://super.lider.cl/search?query="},
             {"Unimarc","https://www.unimarc.cl/search?q="},
-            {"Tottus","https://www.tottus.cl/tottus-cl/buscar?Ntt="}
+            {"Tottus","https://www.tottus.cl/tottus-cl/buscar?Ntt="},
+            {"Jumbo","https://www.jumbo.cl/busqueda?ft="},
+            {"Santa Isabel","https://www.santaisabel.cl/busqueda?ft="},
+            {"aCuenta","https://www.acuenta.cl/","home"},
+            {"Mayorista 10","https://www.mayorista10.cl/","home"}
         };
         for(String[] store:stores) {
-            TextView link=label("Buscar en "+store[0]+" ↗",13,true,0xFF14736E);
+            TextView link=label((store.length>2?"Abrir ofertas en ":"Buscar en ")+store[0]+" ↗",13,true,0xFF14736E);
             link.setPadding(px(12),px(10),0,px(10));
             link.setOnClickListener(v -> {
                 try {
-                    String target=store[1]+java.net.URLEncoder.encode(query,"UTF-8");
+                    String target=store[1]+(store.length>2?"":java.net.URLEncoder.encode(query,"UTF-8"));
                     startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW,Uri.parse(target)));
                 } catch(Exception e){toast("No se pudo abrir el supermercado.");}
             });
@@ -126,17 +130,17 @@ old='''        <LinearLayout android:layout_width="match_parent" android:layout_
             <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="02   Productos del catálogo"'''
 new='''        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginLeft="16dp" android:layout_marginRight="16dp" android:layout_marginTop="16dp" android:background="@drawable/surface_card" android:padding="16dp" android:orientation="vertical">
             <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="02   Precios publicados en Internet" android:textColor="#112D3D" android:textSize="18sp" android:textStyle="bold"/>
-            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:text="Jumbo y Santa Isabel: consulta experimental. Los resultados pueden ser productos diferentes. Verifica marca, formato, ofertas y precio de tu sucursal." android:textColor="#4B6874" android:textSize="13sp"/>
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:text="Consulta web experimental en 5 cadenas. aCuenta y Mayorista 10 tienen enlaces a sus tiendas. No hay precios garantizados por sucursal ni coincidencia exacta de producto." android:textColor="#4B6874" android:textSize="13sp"/>
             <TextView android:id="@+id/liveStatus" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:text="Ingresa un producto y pulsa Consultar precios online." android:textColor="#326B78" android:textSize="12sp"/>
             <LinearLayout android:id="@+id/liveResults" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:orientation="vertical"/>
         </LinearLayout>
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_margin="16dp" android:background="@drawable/surface_card" android:padding="16dp" android:orientation="vertical">
             <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="03   Catálogo local"'''
 xml=change(xml,old,new)
-xml=xml.replace('PILOTO · SIN PRECIOS ONLINE VERIFICADOS','PILOTO · BÚSQUEDA WEB DE 2 CADENAS')
+xml=xml.replace('PILOTO · SIN PRECIOS ONLINE VERIFICADOS','PILOTO · 7 CADENAS · COBERTURA DE PRECIOS PARCIAL')
 xml=xml.replace('Valores de ejemplo ficticios. Tus registros manuales se muestran por separado.','Los resultados web, las cifras ficticias y tus registros manuales se muestran separados.')
 xml=xml.replace('03   Comparación de precios','04   Datos de demostración y registros')
-xml=xml.replace('ComparaRM 0.1 · Prototipo local · Santiago y RM\\nSin conexión a tiendas ni validación comercial','ComparaRM 0.2 · Consulta experimental · Santiago y RM\\nNo comprueba el precio en caja ni la coincidencia exacta del EAN')
+xml=xml.replace('ComparaRM 0.1 · Prototipo local · Santiago y RM\\nSin conexión a tiendas ni validación comercial','ComparaRM 0.3 · Cobertura parcial · Santiago y RM\\nNo comprueba el precio en caja ni la coincidencia exacta del EAN')
 xml=xml.replace('android:allCaps=','android:textAllCaps=')
 layout.write_text(xml)
 
@@ -145,7 +149,7 @@ m=change(m,'    <application android:', '    <uses-permission android:name="andr
 m=m.replace('<!-- No Internet permissions: all catalog and user observations remain on-device in this prototype. -->','<!-- Public catalog lookup; personal observations remain local. -->')
 manifest.write_text(m)
 
-b=build.read_text().replace('versionCode 1','versionCode 2').replace("versionName '0.1.0'","versionName '0.2.0'")
+b=build.read_text().replace('versionCode 1','versionCode 3').replace("versionName '0.1.0'","versionName '0.3.0'")
 build.write_text(b)
 (root/"app/src/main/java/cl/compararm/app/OnlinePrices.java").write_bytes(Path("patches/OnlinePrices.java").read_bytes())
 print("ComparaRM v0.2 files patched")
