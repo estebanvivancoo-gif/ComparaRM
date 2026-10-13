@@ -37,11 +37,19 @@ object Documents {
             number++
             page=pdf.startPage(PdfDocument.PageInfo.Builder(595,842,number).create())
             canvas=page!!.canvas
-            y=42f
-            canvas!!.drawText("DIRECCIÓN DE SALUD · ILUSTRE MUNICIPALIDAD DE SANTIAGO",32f,28f,titlePaint.apply { textSize=11f })
-            titlePaint.textSize=15f
-            canvas!!.drawLine(32f,34f,563f,34f,linePaint)
-            y=56f
+            val c=canvas!!
+            val blue=Paint(Paint.ANTI_ALIAS_FLAG).apply {color=Color.rgb(13,73,123)}
+            c.drawRect(0f,0f,595f,67f,blue)
+            val white=Paint(Paint.ANTI_ALIAS_FLAG).apply {color=Color.WHITE}
+            c.drawRoundRect(RectF(32f,10f,88f,57f),4f,4f,white)
+            val placeholder=Paint(Paint.ANTI_ALIAS_FLAG).apply {color=Color.rgb(13,73,123);textSize=9f}
+            c.drawText("LOGO",46f,31f,placeholder)
+            c.drawText("OFICIAL",41f,43f,placeholder)
+            val header=Paint(Paint.ANTI_ALIAS_FLAG).apply {color=Color.WHITE;textSize=12f;isFakeBoldText=true}
+            c.drawText("DIRECCIÓN DE SALUD",100f,29f,header)
+            header.textSize=10f;header.isFakeBoldText=false
+            c.drawText("Ilustre Municipalidad de Santiago · Plantilla piloto",100f,47f,header)
+            y=91f
             heading(title)
         }
         fun ensure(height:Float=28f) { if(y+height>790f)newPage() }
@@ -49,6 +57,70 @@ object Documents {
             ensure(25f)
             canvas!!.drawText(value.take(80),32f,y,titlePaint)
             y+=22f
+        }
+        fun riskHeading(value:String,risk:String) {
+            ensure(30f)
+            val shade=when(risk) {
+                "CRITICO"->Color.rgb(196,49,51)
+                "MODERADO"->Color.rgb(211,155,27)
+                else->Color.rgb(34,125,78)
+            }
+            val paint=Paint(Paint.ANTI_ALIAS_FLAG).apply {color=shade}
+            canvas!!.drawRoundRect(RectF(32f,y-15f,563f,y+12f),4f,4f,paint)
+            val ink=Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color=if(risk=="MODERADO")Color.BLACK else Color.WHITE
+                textSize=12f;isFakeBoldText=true
+            }
+            canvas!!.drawText(value.take(65),42f,y+3f,ink)
+            y+=29f
+        }
+        fun table(headers:List<String>,rows:List<List<String>>) {
+            ensure(56f)
+            val widths=floatArrayOf(45f,125f,100f,118f,145f)
+            val paint=Paint(Paint.ANTI_ALIAS_FLAG).apply {textSize=9f}
+            val n=headers.size
+            val colwidth=531f/n
+            fun drawRow(cells:List<String>,isHeader:Boolean) {
+                ensure(25f)
+                val fill=Paint().apply {color=if(isHeader)Color.rgb(221,234,244) else Color.WHITE}
+                canvas!!.drawRect(32f,y-14f,563f,y+9f,fill)
+                canvas!!.drawLine(32f,y+9f,563f,y+9f,linePaint)
+                paint.color=if(isHeader)Color.rgb(13,73,123) else Color.DKGRAY
+                paint.isFakeBoldText=isHeader
+                cells.take(n).forEachIndexed {idx,word->
+                    val maxChars=((colwidth-10f)/5f).toInt().coerceAtLeast(4)
+                    canvas!!.drawText(word.take(maxChars),37f+idx*colwidth,y+2f,paint)
+                }
+                y+=24f
+            }
+            drawRow(headers,true)
+            for(row in rows)drawRow(row,false)
+            y+=5f
+        }
+        fun signatures(inspector:String,inspectorName:String,receiver:String,receiverName:String) {
+            ensure(135f)
+            val c=canvas!!
+            fun signatureBox(x:Float,path:String,caption:String) {
+                val outline=Paint(Paint.ANTI_ALIAS_FLAG).apply {color=Color.rgb(160,182,198);style=Paint.Style.STROKE;strokeWidth=1f}
+                val box=RectF(x,y,x+253f,y+92f)
+                c.drawRoundRect(box,5f,5f,outline)
+                if(path.isNotBlank() && File(path).exists()) {
+                    val opts=BitmapFactory.Options().apply {inSampleSize=2}
+                    val image=BitmapFactory.decodeFile(path,opts)
+                    if(image!=null){
+                        val scale=minOf(236f/image.width,68f/image.height)
+                        val width=image.width*scale;val height=image.height*scale
+                        val dst=RectF(x+8f,y+6f,x+8f+width,y+6f+height)
+                        c.drawBitmap(image,null,dst,null)
+                        image.recycle()
+                    }
+                }
+                val text=Paint(Paint.ANTI_ALIAS_FLAG).apply {color=Color.DKGRAY;textSize=9f}
+                c.drawText(caption.take(43),x+5f,y+110f,text)
+            }
+            signatureBox(32f,inspector,"Inspector: "+inspectorName)
+            signatureBox(310f,receiver,"Receptor: "+receiverName)
+            y+=128f
         }
         fun line(key:String,value:String) { paragraph(key+": "+value) }
         fun paragraph(value:String) {
@@ -112,10 +184,13 @@ object Documents {
             if(participants.isEmpty())w.paragraph("Sin participantes registrados.")
             for(p in participants)w.paragraph(p.name+" | "+p.role+" | RUT: "+p.rut)
             w.heading("Hallazgos y medidas de control")
+            if(findings.isNotEmpty())w.table(listOf("Nº","Riesgo","Estado","Plazo"), findings.mapIndexed{index,f->
+                listOf((index+1).toString(),f.risk,f.status,f.deadlineIso)
+            })
             if(findings.isEmpty())w.paragraph("Sin hallazgos registrados.")
             for((i,f) in findings.withIndex()){
                 w.ensure(110f);w.horizontal()
-                w.heading("Hallazgo "+(i+1)+" · "+f.risk)
+                w.riskHeading("Hallazgo "+(i+1)+" · "+f.risk,f.risk)
                 w.line("Ubicación",f.location)
                 w.line("Condición insegura",f.unsafeCondition)
                 w.line("Peligro",f.hazard)
@@ -131,8 +206,7 @@ object Documents {
             w.heading("Conclusiones del inspector")
             w.paragraph(inspection.conclusions.ifBlank {"Sin conclusiones ingresadas."})
             w.heading("Firmas manuscritas")
-            w.picture(inspection.inspectorSignature,"Inspector · "+inspection.inspector,95f)
-            w.picture(inspection.receiverSignature,"Receptor · "+inspection.receiverName,95f)
+            w.signatures(inspection.inspectorSignature,inspection.inspector,inspection.receiverSignature,inspection.receiverName)
             w.paragraph("Las firmas insertadas son imágenes manuscritas; este PDF no posee firma electrónica avanzada.")
             w.close()
             return File(exportDir(context),"inspeccion_"+inspection.id.take(8)+".pdf").also {
@@ -147,6 +221,8 @@ object Documents {
             w.line("Período",stats.period.toString())
             w.line("Inspecciones realizadas",stats.inspections.toString())
             w.line("Hallazgos detectados",stats.findings.toString())
+            w.table(listOf("Indicador","Leve","Moderado","Crítico"),
+                listOf(listOf("Hallazgos",stats.mild.toString(),stats.moderate.toString(),stats.critical.toString())))
             w.line("Riesgos leves / moderados / críticos",""+stats.mild+" / "+stats.moderate+" / "+stats.critical)
             w.line("Cerrados dentro del plazo",stats.onTime.toString())
             w.line("Vencidos o cerrados fuera de plazo",stats.overdue.toString())
