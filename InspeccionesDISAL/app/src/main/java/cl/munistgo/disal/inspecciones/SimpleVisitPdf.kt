@@ -22,11 +22,11 @@ import java.util.Locale
  * Nunca representa una reunión CPHS como inspección y no crea hallazgos automáticos.
  */
 object SimpleVisitPdf {
-    private const val NAVY=0xFF173D59
-    private const val BLUE=0xFF256182
-    private const val INK=0xFF253641
-    private const val GRAY=0xFF62727D
-    private const val PALE=0xFFF0F4F7
+    private val NAVY=0xFF173D59.toInt()
+    private val BLUE=0xFF256182.toInt()
+    private val INK=0xFF253641.toInt()
+    private val GRAY=0xFF62727D.toInt()
+    private val PALE=0xFFF0F4F7.toInt()
     private const val X=43f
     private const val END=552f
     private fun paint(size:Float,color:Int,bold:Boolean=false)=Paint(Paint.ANTI_ALIAS_FLAG).apply{
